@@ -45,12 +45,4 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void start(String user, String pass) {
-        output(user + pass);
-        Request request = new Request.Builder().url("http://192.168.50.110:8888/app/websocket").build();
-        ServerListener serverListener = new ServerListener();
-        WebSocket webSocket = client.newWebSocket(request, serverListener);
-
-        client.dispatcher().executorService().shutdown();
-    }
     */

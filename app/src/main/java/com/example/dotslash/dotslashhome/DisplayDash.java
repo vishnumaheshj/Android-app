@@ -8,7 +8,6 @@ import android.widget.TextView;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import okhttp3.OkHttpClient;
@@ -84,17 +83,12 @@ public class DisplayDash extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_display_dash);
 
-        TextView userT = findViewById(R.id.textView2);
-        TextView passT = findViewById(R.id.textView3);
         msgT = findViewById(R.id.textView);
 
         client = new OkHttpClient();
         Intent intent = getIntent();
         user = intent.getStringExtra("username");
         pass = intent.getStringExtra("password");
-
-        userT.setText(user);
-        passT.setText(pass);
 
         Request request = new Request.Builder().url("http://192.168.50.110:8888/app/websocket").build();
         ServerListener serverListener = new ServerListener();
@@ -112,36 +106,6 @@ public class DisplayDash extends AppCompatActivity {
         });
     }
 }
-//    compile 'com.google.code.gson:gson:2.8.2'
-
-//private TextView output;
-//private TextView msgT  = findViewById(R.id.textView);
-
-
-    /*
-
-    */
-
-//output(user + pass);
-
-
-        /*
-        Request request = new Request.Builder().url("http://192.168.50.110:8888/app/websocket").build();
-        ServerListener serverListener = new ServerListener();
-        WebSocket webSocket = client.newWebSocket(request, serverListener);
-        client.dispatcher().executorService().shutdown();
-        */
-
-
-/*
-    private void output(final String txt){
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                output.setText(output.getText().toString() + "\n\n" + txt);
-            }
-        });
-    }*/
 /*
         @Override
         public void onMessage(WebSocket webSocket, ByteString bytes) {
