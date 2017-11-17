@@ -1,10 +1,12 @@
 package com.example.dotslash.dotslashhome;
 
 import android.content.Intent;
+import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
+import android.widget.CompoundButton;
 import android.widget.LinearLayout;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -13,6 +15,11 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -24,14 +31,17 @@ public class DisplayDash extends AppCompatActivity {
     private String user, pass;
     private OkHttpClient client;
     private LinearLayout linearLayout;
+    private WebSocket openedWebSocket;
+    private long hubAddr;
+    private String sockId = "";
+    private Map<Integer, List<Long>> idToBoard = new HashMap<Integer, List<Long>>();
 
     private final class ServerListener extends WebSocketListener {
         private static final int NORMAL_CLOSURE_STATUS = 1000;
-        private String sockId = "";
 
         @Override
         public void onOpen(WebSocket webSocket, Response response) {
-
+            openedWebSocket = webSocket;
         }
 
         @Override
@@ -49,7 +59,7 @@ public class DisplayDash extends AppCompatActivity {
                         cMsg.put("type", "auth");
                         cMsg.put("user", user);
                         cMsg.put("passcode", pass);
-                        webSocket.send(cMsg.toString());
+                        openedWebSocket.send(cMsg.toString());
                         break;
 
                     case "error":
@@ -62,7 +72,7 @@ public class DisplayDash extends AppCompatActivity {
 
                     case "stateChange":
                         long totalNodes = sMsg.get("totalNodes").getAsLong();
-                        long hubAddr = sMsg.get("hubAddr").getAsLong();
+                        hubAddr = sMsg.get("hubAddr").getAsLong();
                         createTextView("Hub address : " + hubAddr + "\n\n");
 
                         for (long nodeNum = 1; nodeNum <= totalNodes; nodeNum++) {
@@ -73,9 +83,9 @@ public class DisplayDash extends AppCompatActivity {
                                     for (long switchNum = 1; switchNum <= 4; switchNum++) {
                                         long value = board.get("switch" + switchNum).getAsLong();
                                         if (value == 1)
-                                            createSwitch(switchNum, 1);
+                                            createSwitch(nodeNum, switchNum, 1);
                                         else
-                                            createSwitch(switchNum, 0);
+                                            createSwitch(nodeNum, switchNum, 0);
                                     }
                                     break;
                                 default:
@@ -126,18 +136,52 @@ public class DisplayDash extends AppCompatActivity {
 
     }
 
-    private void createSwitch(final long num, final long state) {
+    private void createSwitch(final long nodeNum, final long switchNum, final long state) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 Switch aSwitch = new Switch(DisplayDash.this);
-                aSwitch.setText("Switch " + num);
+                aSwitch.setText("Switch " + switchNum);
                 aSwitch.setGravity(Gravity.LEFT);
-                aSwitch.setId(View.generateViewId());
+                final int switchId = View.generateViewId();
+                aSwitch.setId(switchId);
+                List<Long> boardSwitch = new ArrayList<Long>();
+                boardSwitch.add(nodeNum);
+                boardSwitch.add(switchNum);
+                idToBoard.put(switchId, boardSwitch);
                 if (state == 1)
                     aSwitch.setChecked(true);
                 else
                     aSwitch.setChecked(false);
+                aSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
+                        long boardNum = idToBoard.get(compoundButton.getId()).get(0);
+                        long switchN = idToBoard.get(compoundButton.getId()).get(1);
+
+                        try {
+                            JSONObject switchUpdate = new JSONObject();
+
+                            switchUpdate.put("type", "singleSwitchUpdate");
+                            switchUpdate.put("hubAddr", hubAddr);
+                            switchUpdate.put("nodeid", boardNum);
+                            switchUpdate.put("appSocketID", sockId);
+                            if (isChecked) {
+                                switchUpdate.put("switch" + switchN, "on");
+                                createTextView("Board " + boardNum + " Switch " + switchN + " changed to 1");
+                            } else {
+                                switchUpdate.put("switch" + switchN, "off");
+                                createTextView("Board " + boardNum + " Switch " + switchN + " changed to 0");
+                            }
+
+                            openedWebSocket.send(switchUpdate.toString());
+                        } catch (Exception e) {
+                            createTextView("Failed to send switch state to server");
+                            e.printStackTrace();
+                        }
+                    }
+                });
+
                 linearLayout.addView(aSwitch);
             }
         });
