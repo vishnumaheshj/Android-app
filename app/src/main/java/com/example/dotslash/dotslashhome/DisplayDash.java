@@ -3,7 +3,10 @@ package com.example.dotslash.dotslashhome;
 import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.view.Gravity;
+import android.view.View;
 import android.widget.LinearLayout;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import com.google.gson.JsonObject;
@@ -20,7 +23,7 @@ import okhttp3.WebSocketListener;
 public class DisplayDash extends AppCompatActivity {
     private String user, pass;
     private OkHttpClient client;
-    private TextView msgT;
+    private LinearLayout linearLayout;
 
     private final class ServerListener extends WebSocketListener {
         private static final int NORMAL_CLOSURE_STATUS = 1000;
@@ -51,46 +54,42 @@ public class DisplayDash extends AppCompatActivity {
 
                     case "error":
                         String reason = sMsg.get("reason").getAsString();
-                        if(reason.equals("auth_fail"))
-                            updateViewText("Log In failed");
+                        if (reason.equals("auth_fail"))
+                            createTextView("Log In failed");
                         else
-                            updateViewText(reason);
+                            createTextView(reason);
                         break;
 
                     case "stateChange":
                         long totalNodes = sMsg.get("totalNodes").getAsLong();
                         long hubAddr = sMsg.get("hubAddr").getAsLong();
-                        updateViewText("Hub address : " + hubAddr);
-                        updateViewText("Number of nodes : " + totalNodes);
+                        createTextView("Hub address : " + hubAddr + "\n\n");
 
-                        for(long nodeNum = 1; nodeNum <= totalNodes; nodeNum++)
-                        {
+                        for (long nodeNum = 1; nodeNum <= totalNodes; nodeNum++) {
                             JsonObject board = sMsg.getAsJsonObject("board" + nodeNum);
-                            updateViewText("Board " + nodeNum);
-                            switch(board.get("type").getAsInt())
-                            {
+                            createTextView("Board " + nodeNum);
+                            switch (board.get("type").getAsInt()) {
                                 case 2:
-                                    updateViewText("Your switchboard " + nodeNum + " has 4 switches");
-                                    for(long switchNum = 1; switchNum <=4; switchNum++) {
+                                    for (long switchNum = 1; switchNum <= 4; switchNum++) {
                                         long value = board.get("switch" + switchNum).getAsLong();
-                                        if(value == 1)
-                                            updateViewText("Switch " + switchNum + " = ON");
+                                        if (value == 1)
+                                            createSwitch(switchNum, 1);
                                         else
-                                            updateViewText("Switch " + switchNum + " = OFF");
+                                            createSwitch(switchNum, 0);
                                     }
                                     break;
                                 default:
-                                    updateViewText("Switchboard type of switchboard " + nodeNum +" is unknown");
+                                    createTextView("Switchboard type of switchboard " + nodeNum + " is unknown");
                             }
                         }
                         break;
 
                     default:
-                        updateViewText("Default case Receiving: " + text);
+                        createTextView("Default case Receiving: " + text);
                 }
             } catch (Exception e) {
-                updateViewText("Server message is invalid");
-                updateViewText(text);
+                createTextView("Server message is invalid");
+                createTextView(text);
                 e.printStackTrace();
             }
         }
@@ -102,7 +101,7 @@ public class DisplayDash extends AppCompatActivity {
 
         @Override
         public void onFailure(WebSocket webSocket, Throwable t, Response response) {
-            updateViewText("Error: " + t.getMessage());
+            createTextView("Error: " + t.getMessage());
         }
     }
 
@@ -111,15 +110,14 @@ public class DisplayDash extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_display_dash);
-        LinearLayout linearLayout = (LinearLayout)findViewById(R.id.container);
-
-        msgT = new TextView(this);
-        linearLayout.addView(msgT);
+        linearLayout = (LinearLayout) findViewById(R.id.container);
 
         client = new OkHttpClient();
         Intent intent = getIntent();
         user = intent.getStringExtra("username");
         pass = intent.getStringExtra("password");
+
+        createTextView(user.toUpperCase() + "'s Dashboard\n");
 
         Request request = new Request.Builder().url("http://192.168.50.110:8888/app/websocket").build();
         ServerListener serverListener = new ServerListener();
@@ -128,11 +126,31 @@ public class DisplayDash extends AppCompatActivity {
 
     }
 
-    private void updateViewText(final String txt){
+    private void createSwitch(final long num, final long state) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                msgT.setText(msgT.getText().toString() + "\n\n" + txt);
+                Switch aSwitch = new Switch(DisplayDash.this);
+                aSwitch.setText("Switch " + num);
+                aSwitch.setGravity(Gravity.LEFT);
+                aSwitch.setId(View.generateViewId());
+                if (state == 1)
+                    aSwitch.setChecked(true);
+                else
+                    aSwitch.setChecked(false);
+                linearLayout.addView(aSwitch);
+            }
+        });
+    }
+
+    private void createTextView(final String txt) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                TextView textView = new TextView(DisplayDash.this);
+                textView.setText(txt);
+                textView.setId(View.generateViewId());
+                linearLayout.addView(textView);
             }
         });
     }
