@@ -3,6 +3,7 @@ package com.example.dotslash.dotslashhome;
 import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.google.gson.JsonObject;
@@ -38,7 +39,6 @@ public class DisplayDash extends AppCompatActivity {
                 JsonObject sMsg = parser.parse(text).getAsJsonObject();
 
                 String type = sMsg.get("type").getAsString();
-                updateViewText(type);
                 switch (type) {
                     case "init":
                         sockId = sMsg.get("appSocketID").getAsString();
@@ -48,14 +48,43 @@ public class DisplayDash extends AppCompatActivity {
                         cMsg.put("passcode", pass);
                         webSocket.send(cMsg.toString());
                         break;
+
                     case "error":
                         String reason = sMsg.get("reason").getAsString();
-                        if(reason.equals("auth_fail")){
+                        if(reason.equals("auth_fail"))
                             updateViewText("Log In failed");
-                        }
                         else
                             updateViewText(reason);
                         break;
+
+                    case "stateChange":
+                        long totalNodes = sMsg.get("totalNodes").getAsLong();
+                        long hubAddr = sMsg.get("hubAddr").getAsLong();
+                        updateViewText("Hub address : " + hubAddr);
+                        updateViewText("Number of nodes : " + totalNodes);
+
+                        for(long nodeNum = 1; nodeNum <= totalNodes; nodeNum++)
+                        {
+                            JsonObject board = sMsg.getAsJsonObject("board" + nodeNum);
+                            updateViewText("Board " + nodeNum);
+                            switch(board.get("type").getAsInt())
+                            {
+                                case 2:
+                                    updateViewText("Your switchboard " + nodeNum + " has 4 switches");
+                                    for(long switchNum = 1; switchNum <=4; switchNum++) {
+                                        long value = board.get("switch" + switchNum).getAsLong();
+                                        if(value == 1)
+                                            updateViewText("Switch " + switchNum + " = ON");
+                                        else
+                                            updateViewText("Switch " + switchNum + " = OFF");
+                                    }
+                                    break;
+                                default:
+                                    updateViewText("Switchboard type of switchboard " + nodeNum +" is unknown");
+                            }
+                        }
+                        break;
+
                     default:
                         updateViewText("Default case Receiving: " + text);
                 }
@@ -82,8 +111,10 @@ public class DisplayDash extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_display_dash);
+        LinearLayout linearLayout = (LinearLayout)findViewById(R.id.container);
 
-        msgT = findViewById(R.id.textView);
+        msgT = new TextView(this);
+        linearLayout.addView(msgT);
 
         client = new OkHttpClient();
         Intent intent = getIntent();
