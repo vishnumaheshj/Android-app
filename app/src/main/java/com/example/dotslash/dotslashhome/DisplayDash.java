@@ -35,6 +35,7 @@ public class DisplayDash extends AppCompatActivity {
     private long hubAddr;
     private String sockId = "";
     private Map<Integer, List<Long>> idToBoard = new HashMap<Integer, List<Long>>();
+    private Map<Long, List<Integer>> nodeToId = new HashMap<Long, List<Integer>>();
 
     private final class ServerListener extends WebSocketListener {
         private static final int NORMAL_CLOSURE_STATUS = 1000;
@@ -129,7 +130,7 @@ public class DisplayDash extends AppCompatActivity {
 
         createTextView(user.toUpperCase() + "'s Dashboard\n");
 
-        Request request = new Request.Builder().url("http://192.168.50.110:8888/app/websocket").build();
+        Request request = new Request.Builder().url("http://192.168.50.130:8888/app/websocket").build();
         ServerListener serverListener = new ServerListener();
         WebSocket webSocket = client.newWebSocket(request, serverListener);
         client.dispatcher().executorService().shutdown();
@@ -143,12 +144,23 @@ public class DisplayDash extends AppCompatActivity {
                 Switch aSwitch = new Switch(DisplayDash.this);
                 aSwitch.setText("Switch " + switchNum);
                 aSwitch.setGravity(Gravity.LEFT);
+
                 final int switchId = View.generateViewId();
                 aSwitch.setId(switchId);
+
                 List<Long> boardSwitch = new ArrayList<Long>();
                 boardSwitch.add(nodeNum);
                 boardSwitch.add(switchNum);
                 idToBoard.put(switchId, boardSwitch);
+
+                List<Integer> viewIds;
+                if(switchNum != 1)
+                    viewIds = nodeToId.get(nodeNum);
+                else
+                    viewIds = new ArrayList<Integer>();
+                viewIds.add(switchId);
+                nodeToId.put(nodeNum, viewIds);
+
                 if (state == 1)
                     aSwitch.setChecked(true);
                 else
@@ -158,6 +170,7 @@ public class DisplayDash extends AppCompatActivity {
                     public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
                         long boardNum = idToBoard.get(compoundButton.getId()).get(0);
                         long switchN = idToBoard.get(compoundButton.getId()).get(1);
+                        List<Integer> switchList = nodeToId.get(boardNum);
 
                         try {
                             JSONObject switchUpdate = new JSONObject();
@@ -166,12 +179,24 @@ public class DisplayDash extends AppCompatActivity {
                             switchUpdate.put("hubAddr", hubAddr);
                             switchUpdate.put("nodeid", boardNum);
                             switchUpdate.put("appSocketID", sockId);
-                            if (isChecked) {
-                                switchUpdate.put("switch" + switchN, "on");
-                                createTextView("Board " + boardNum + " Switch " + switchN + " changed to 1");
-                            } else {
-                                switchUpdate.put("switch" + switchN, "off");
-                                createTextView("Board " + boardNum + " Switch " + switchN + " changed to 0");
+
+                            for(int i = 0; i < switchList.size(); i++) {
+                                if(switchN == (i + 1)) {
+                                    if (isChecked) {
+                                        switchUpdate.put("switch" + switchN, "on");
+                                        createTextView("Board " + boardNum + " Switch " + switchN + " changed to 1");
+                                    } else {
+                                        switchUpdate.put("switch" + switchN, "off");
+                                        createTextView("Board " + boardNum + " Switch " + switchN + " changed to 0");
+                                    }
+                                } else {
+                                    Switch tempSwitch = (Switch)findViewById(switchList.get(i));
+                                    if(tempSwitch.isChecked()) {
+                                        switchUpdate.put("switch" + (i + 1), "on");
+                                    } else {
+                                        switchUpdate.put("switch" + (i + 1), "off");
+                                    }
+                                }
                             }
 
                             openedWebSocket.send(switchUpdate.toString());
