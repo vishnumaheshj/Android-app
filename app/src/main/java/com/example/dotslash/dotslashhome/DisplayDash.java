@@ -130,7 +130,7 @@ public class DisplayDash extends AppCompatActivity {
 
         createTextView(user.toUpperCase() + "'s Dashboard\n");
 
-        Request request = new Request.Builder().url("http://192.168.50.130:8888/app/websocket").build();
+        Request request = new Request.Builder().url("http://dotslash.co/app/websocket").build();
         ServerListener serverListener = new ServerListener();
         WebSocket webSocket = client.newWebSocket(request, serverListener);
         client.dispatcher().executorService().shutdown();
@@ -177,7 +177,7 @@ public class DisplayDash extends AppCompatActivity {
 
                             switchUpdate.put("type", "singleSwitchUpdate");
                             switchUpdate.put("hubAddr", hubAddr);
-                            switchUpdate.put("nodeid", boardNum);
+                            switchUpdate.put("nodeid", String.valueOf(boardNum));
                             switchUpdate.put("appSocketID", sockId);
 
                             for(int i = 0; i < switchList.size(); i++) {
