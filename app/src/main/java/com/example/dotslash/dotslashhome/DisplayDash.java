@@ -1,7 +1,6 @@
 package com.example.dotslash.dotslashhome;
 
 import android.content.Intent;
-import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.Gravity;
@@ -29,6 +28,7 @@ import okhttp3.WebSocketListener;
 
 public class DisplayDash extends AppCompatActivity {
     private String user, pass;
+    private String changedSwitch = "";
     private OkHttpClient client;
     private LinearLayout linearLayout;
     private WebSocket openedWebSocket;
@@ -51,6 +51,7 @@ public class DisplayDash extends AppCompatActivity {
                 JSONObject cMsg = new JSONObject();
                 JsonParser parser = new JsonParser();
                 JsonObject sMsg = parser.parse(text).getAsJsonObject();
+                createTextView(changedSwitch);
 
                 String type = sMsg.get("type").getAsString();
                 switch (type) {
@@ -184,10 +185,10 @@ public class DisplayDash extends AppCompatActivity {
                                 if(switchN == (i + 1)) {
                                     if (isChecked) {
                                         switchUpdate.put("switch" + switchN, "on");
-                                        createTextView("Board " + boardNum + " Switch " + switchN + " changed to 1");
+                                        changedSwitch = ("Board " + boardNum + " Switch " + switchN + " changed to 1");
                                     } else {
                                         switchUpdate.put("switch" + switchN, "off");
-                                        createTextView("Board " + boardNum + " Switch " + switchN + " changed to 0");
+                                        changedSwitch = ("Board " + boardNum + " Switch " + switchN + " changed to 0");
                                     }
                                 } else {
                                     Switch tempSwitch = (Switch)findViewById(switchList.get(i));
@@ -200,6 +201,11 @@ public class DisplayDash extends AppCompatActivity {
                             }
 
                             openedWebSocket.send(switchUpdate.toString());
+
+                            /* Since state change provides complete switch information, removing all the current elements
+                                and creating the updated one with next message. There has to be something better than this.
+                             */
+                            linearLayout.removeAllViewsInLayout();
                         } catch (Exception e) {
                             createTextView("Failed to send switch state to server");
                             e.printStackTrace();
